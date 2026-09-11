@@ -8,3 +8,4 @@ server.key
 # Runtime logs and generated data
 rat_sessions.json
 *.log
+screenshots/
