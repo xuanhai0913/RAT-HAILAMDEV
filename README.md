@@ -120,6 +120,13 @@ an toàn:
 - Bổ sung test cho giao thức, TLS, timeout và xử lý lỗi.
 - Tách phần transport, protocol và business logic để dễ audit.
 
+## Tác giả và nguồn
+
+**Nguyen Xuan Hai**
+
+- LinkedIn: [linkedin.com/in/xuanhai0913](https://www.linkedin.com/in/xuanhai0913/)
+- Facebook: [facebook.com/nguyenhai0913](https://www.facebook.com/nguyenhai0913)
+
 ## License
 
-Chưa chỉ định license. Hãy bổ sung license phù hợp trước khi phân phối công khai.
+Dự án được phát hành theo [MIT License](LICENSE).
