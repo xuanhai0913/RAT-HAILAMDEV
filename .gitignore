@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+
+# Lab certificates and private keys
+server.crt
+server.key
+
+# Runtime logs and generated data
+rat_sessions.json
+*.log
